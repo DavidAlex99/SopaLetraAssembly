@@ -19,7 +19,10 @@ org 100h
     matriz3 DB '1','A','B','C','D','E','1'
     matriz4 DB '1','A','B','C','D','E','1'
     matriz5 DB '1','A','B','C','D','E','1'
-    matriz6 DB '1','1','1','1','1','1','1'
+    matriz6 DB '1','1','1','1','1','1','1'  
+        ;Iteradores temporales
+    iteraFilas DW 0
+    iteraLetras DW 0
 ;----------------              
  
 ;---------------- SECCION CODE
@@ -109,9 +112,12 @@ read_input:
         int 21h  
            
     ;--- busqueda horizzontal 
-    ;--- se empiezapor la primera fila       
+    ;--- se empiezapor la primera fila      
+     
 buscar_horizotal:   
+    ; BX DIRECCION DE MEMORIA DE LA FILA PRIMERA
     mov bx, offset matriz0 ;se empieza desde la primera fila
+    ; SI VARIABLE PARA ITEAR ELEMENTOS DE LA FILA (NO COMPARAR)
     mov si, 0              ;indice primerizo para comenzar          
               
 recorrer_fila:  
@@ -119,10 +125,107 @@ recorrer_fila:
     cmp si, 7
     je siguiente_fila
     
+    ;aqui se hace la comparacion de la primera letra
+    CALL comparar_palabra
     
     inc si  ;incremeto del indice para el siguiente elemento  
             ;hasta que si no sea mayor que 7 se ejecutaara recorrer_fila
     jmp recorrer_fila  
+
+;para verificar si la lommgitud restane de la fila es myor que el del
+;input del usuario    
+verifica_longitud: 
+
+
+; Asumiendo que BX apunta al inicio de la fila actual en la matriz
+; y SI es el índice de la columna actual en esa fila
+comparar_palabra:    
+
+    ;guardamos el valor de si en iteraLetras para luego recuperarlo
+    mov iteraLetras, si 
+    
+    ; INICIALIZAR CONTADORES 
+    mov cl, [entradabf + 1]      ; CL = longitud de la palabra ingresada (si funciona)
+    
+    ;--PRUEBA ENSENANDO LONGITUD DEL INPUT
+    mov ah, 02h 
+    mov dl, cl 
+    add dl, 30h  
+    int 21h      
+    ;--PRUEBA
+    
+    mov di, si                   ; DI = indice para seguir comparando en la matriz
+    xor si, si
+    mov si, 2                 ; reseteamos si para usar como valor iterador en la matriz
+    xor ch, ch                   ; CH = contador de coincidencias
+
+comparar_siguiente_letra:
+    cmp ch, cl
+    je todas_letras_coinciden    ; Si CH == CL, toda la palabra coincide 
+    
+    ;acceder     
+    mov si, OFFSET entradabf
+    add si, 2
+    mov al, [si]
+    
+    
+    ;--PRUEBA ENSENANDO LA  PRIMERA LETRA
+    mov ah, 02h 
+    mov dl, al 
+    int 21h      
+    ;--PRUEBA
+    
+    ;iteracio letra por  letra
+    ;SI ahora tiene la direccion del INPUT  
+    mov si, OFFSET entradabf
+    add si, 3
+    ;add si, di  
+    ;--PRUEBA ENSENANDO SEGUNDA LETRA
+    mov al, [si]
+    mov ah, 02h 
+    mov dl, al  
+    int 21h      
+    ;--PRUEBA
+
+    cmp al, dl 
+    xor ah, ah
+    jne no_coincide
+    ; Guardar dirección en el stack
+    lea ax, [si]
+    push ax
+    inc di                       ; incrementa la siguiente letra en la misma ila, por funcion palabra
+    inc ch                       ;incrementa en una unidad la coincidencia
+    jmp comparar_siguiente_letra 
+    
+aumentar_iteracion:
+    add si, 1
+    
+
+todas_letras_coinciden:
+    ; Resaltar letras usando direcciones en el stack
+    mov ch, [entradabf + 1]      ; Recargar la longitud de la palabra ingresada
+resaltar_letra:
+    dec ch
+    js fin_comparacion           ; Saltar si hemos resaltado todas las letras
+    pop ax                       ; Sacar dirección de memoria de la letra
+    ; Aqui el codigo para resaltar la letra en 'ax'
+    ; ...
+    jmp resaltar_letra
+
+no_coincide:
+    ; Vaciar el stack si no hay coincidencia completa
+    mov ch, [entradabf + 1]
+vaciar_stack:
+    dec ch
+    js fin_comparacion           ; Saltar si el stack está vacío
+    pop ax                       ; Sacar dirección del stack
+    jmp vaciar_stack
+
+fin_comparacion:   
+    mov si, iteraLetras
+    ret                          ;aqui se tedria que mover a recorrer_fila
+
+    
     
 siguiente_fila:
     ;prueba. aqui se esta tomao como que cada fila tiee 7 elementos
@@ -131,28 +234,6 @@ siguiente_fila:
     ; Comprobacion si se recorrio todas las filas
     cmp bx, offset matriz6+7  
     jle recorrer_fila
-
-
-
-
-
-    ;---  busqueda verticla
-
-;buscar_vertical:
-
-    
-    ;---- busqueda diagonal
-;buscar diagonal:  
-
-
-
-
-
-actTablero PROC near   
-;para leer la entrada del usuario
-    
-
-actTablero ENDP
 
 
     
